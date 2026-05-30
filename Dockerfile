@@ -21,6 +21,9 @@ RUN curl -LO https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/st
     install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && \
     rm kubectl
 
+# Helm
+RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
 # .NET 10 SDK
 RUN curl -sSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh && \
     chmod +x dotnet-install.sh && \
