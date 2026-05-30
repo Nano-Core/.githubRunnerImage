@@ -1,0 +1,139 @@
+name: Build GitHub Runner Image
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+env:
+  IMAGE_NAME: nano-github-runner
+  BASE_IMAGE: myoung34/github-runner:ubuntu-noble
+  CONTAINER_REGISTRY_HOST: ghcr.io
+  CONTAINER_REGISTRY_USERNAME: ${{ github.actor }}
+  CONTAINER_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+  CONTAINER_REGISTRY_SOURCE_LABEL: https://github.com/${{ github.repository }}
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    concurrency:
+      group: ${{ github.repository }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Get Upstream Digest
+        id: upstream
+        shell: pwsh
+        run: |
+          docker pull $env:BASE_IMAGE | Out-Null
+
+          $digest = docker inspect --format='{{index .RepoDigests 0}}' $env:BASE_IMAGE
+
+          echo "Upstream digest: $digest"
+
+          "digest=$digest" >> $env:GITHUB_OUTPUT
+
+      - name: Compute Dockerfile Hash
+        id: local
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash Dockerfile -Algorithm SHA256).Hash.ToLower()
+
+          echo "Dockerfile hash: $hash"
+
+          "hash=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Get Current Dockerfile Hash
+        id: current
+        shell: pwsh
+        run: |
+          $owner = "${{ github.repository_owner }}".ToLower()
+          $image = "$env:CONTAINER_REGISTRY_HOST/$owner/$env:IMAGE_NAME"
+
+          $pullResult = docker pull "$image`:latest" 2>&1
+
+          if ($LASTEXITCODE -ne 0)
+          {
+              echo "No published image found."
+
+              "dockerfile_hash=" >> $env:GITHUB_OUTPUT
+              "base_digest=" >> $env:GITHUB_OUTPUT
+
+              exit 0
+          }
+
+          $metadata = docker inspect "$image`:latest" | ConvertFrom-Json
+          $dockerfileHash = $metadata[0].Config.Labels.'nano.dockerfile-hash'
+          $baseDigest = $metadata[0].Config.Labels.'nano.base-digest'
+
+          echo "Published Dockerfile hash: $dockerfileHash"
+          echo "Published base digest: $baseDigest"
+
+          "dockerfile_hash=$dockerfileHash" >> $env:GITHUB_OUTPUT
+          "base_digest=$baseDigest" >> $env:GITHUB_OUTPUT
+
+      - name: Compare Image Fingerprints
+        id: check
+        shell: pwsh
+        run: |
+          $oldBase = "${{ steps.current.outputs.base_digest }}"
+          $newBase = "${{ steps.upstream.outputs.digest }}"
+          $oldLocal = "${{ steps.current.outputs.dockerfile_hash }}"
+          $newLocal = "${{ steps.local.outputs.hash }}"
+
+          echo "Base: Current=$oldBase Upstream=$newBase"
+          echo "Dockerfile: Current=$oldLocal Local=$newLocal"
+
+          if ($newBase -eq $oldBase -and $newLocal -eq $oldLocal)
+          {
+              echo "No changes detected."
+              "changed=false" >> $env:GITHUB_OUTPUT
+          }
+          else
+          {
+              echo "Changes detected. Rebuild required."
+              "changed=true" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build And Push Image
+        if: steps.check.outputs.changed == 'true'
+        shell: pwsh
+        run: |
+          $owner = "${{ github.repository_owner }}".ToLower()
+          $env:FULL_IMAGE_NAME = "$env:CONTAINER_REGISTRY_HOST/$owner/$env:IMAGE_NAME"
+
+          docker build `
+            -f Dockerfile `
+            -t "$env:FULL_IMAGE_NAME`:latest" `
+            -t "$env:FULL_IMAGE_NAME`:${{ github.sha }}" `
+            --build-arg DOCKERFILE_HASH="${{ steps.local.outputs.hash }}" `
+            --build-arg CONTAINER_REGISTRY_SOURCE_LABEL="$env:CONTAINER_REGISTRY_SOURCE_LABEL" `
+            --label maintainer="${{ github.repository_owner }}" `
+            --label nano.base-digest="${{ steps.upstream.outputs.digest }}" `
+            --label org.opencontainers.image.source="$env:CONTAINER_REGISTRY_SOURCE_LABEL" `
+            .
+
+          $env:CONTAINER_REGISTRY_PASSWORD | docker login $env:CONTAINER_REGISTRY_HOST -u $env:CONTAINER_REGISTRY_USERNAME --password-stdin
+
+          docker push "$env:FULL_IMAGE_NAME`:latest"
+          docker push "$env:FULL_IMAGE_NAME`:${{ github.sha }}"
+
+      - name: GitHub Release
+        if: github.ref == 'refs/heads/master' && steps.check.outputs.changed == 'true'
+        uses: ncipollo/release-action@v1
+        with:
+          tag: runner-${{ github.run_number }}
+          name: "${{ env.IMAGE_NAME }} (${{ github.sha }})"
+          body: |
+            Base image: myoung34/github-runner:ubuntu-noble
+            Docker Image: ghcr.io/${{ github.repository_owner }}/nano-github-runner:${{ github.sha }}
+            Commit: ${{ github.sha }}
+            Build run: ${{ github.run_number }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          prerelease: false
