@@ -26,6 +26,7 @@ The image includes the following additional preinstalled tools compared to the b
 | SQL Server tools   | `sqlcmd`  | SQL Server command-line tools      |
 | PostgreSQL client  | `psql`    | PostgreSQL database CLI            |
 | .NET 10 SDK        | `dotnet`  | .NET development SDK and runtime   |
+| Docker Tools       | `docker`  | Docker Tools                       |
 
 This image is intended to be used as a self-hosted GitHub Actions runner in Azure Container Apps environments for Nano infrastructure and deployment pipelines. It supports deploying Nano applications, 
 managing Kubernetes workloads, and handling database and infrastructure operations.
