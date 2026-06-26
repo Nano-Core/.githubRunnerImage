@@ -131,7 +131,7 @@ jobs:
           name: "${{ env.IMAGE_NAME }} (${{ github.sha }})"
           body: |
             Base image: myoung34/github-runner:ubuntu-noble
-            Docker Image: ghcr.io/${{ github.repository_owner }}/nano-github-runner:${{ github.sha }}
+            Docker Image: ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
             Commit: ${{ github.sha }}
             Build run: ${{ github.run_number }}
           token: ${{ secrets.GITHUB_TOKEN }}
