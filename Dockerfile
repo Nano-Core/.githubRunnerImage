@@ -48,9 +48,4 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > mic
 
 ENV PATH="${PATH}:/opt/mssql-tools18/bin"
 
-# Podman
-RUN apt-get update && apt-get install -y podman && \
-    rm -rf /var/lib/apt/lists/* && \
-    echo "runner ALL=(ALL) NOPASSWD: /usr/bin/podman" >> /etc/sudoers
-
-USER root
+USER runner
