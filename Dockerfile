@@ -53,4 +53,4 @@ RUN apt-get update && apt-get install -y podman && \
     rm -rf /var/lib/apt/lists/* && \
     echo "runner ALL=(ALL) NOPASSWD: /usr/bin/podman" >> /etc/sudoers
 
-USER root
+USER runner
