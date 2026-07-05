@@ -30,13 +30,8 @@ RUN curl -sSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh && \
     ln -s /usr/share/dotnet/dotnet /usr/bin/dotnet && \
     rm dotnet-install.sh
 
-# EF Core tools (installed as 'runner' so $HOME/.dotnet/tools matches CI runtime user)
-USER runner
-RUN dotnet tool install --global dotnet-ef --version 8.* && \
-    dotnet-ef --version || /home/runner/.dotnet/tools/dotnet-ef --version
-USER root
-
-ENV PATH="${PATH}:/home/runner/.dotnet/tools"
+# EF Core tools
+RUN dotnet tool install dotnet-ef --version 10.* --tool-path /opt/ef-tools/net10
 
 # MySQL client
 RUN apt-get update && apt-get install -y mysql-client && rm -rf /var/lib/apt/lists/*
