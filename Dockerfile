@@ -31,7 +31,7 @@ RUN curl -sSL https://dot.net/v1/dotnet-install.sh -o dotnet-install.sh && \
     rm dotnet-install.sh
 
 # EF Core tools
-RUN dotnet tool install dotnet-ef --version 10.* --tool-path /opt/ef-tools/net10
+RUN dotnet tool install dotnet-ef --version 10.* --tool-path /opt/ef-tools/10.0
 
 # MySQL client
 RUN apt-get update && apt-get install -y mysql-client && rm -rf /var/lib/apt/lists/*
