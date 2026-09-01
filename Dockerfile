@@ -20,6 +20,7 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 RUN apt-get update && apt-get install -y \
     gcc libpq-dev python3-dev && \
     rm -rf /var/lib/apt/lists/* && \
+    az extension add --name maintenance && \
     az extension add --name rdbms-connect && \
     chmod -R a+rX $AZURE_EXTENSION_DIR
 
