@@ -59,4 +59,10 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > mic
 
 ENV PATH="${PATH}:/opt/mssql-tools18/bin"
 
+# sqlcmd (Go)
+RUN GOSQLCMD_VERSION=$(curl -s https://api.github.com/repos/microsoft/go-sqlcmd/releases/latest | grep '"tag_name"' | cut -d '"' -f4) && \
+    curl -L "https://github.com/microsoft/go-sqlcmd/releases/download/${GOSQLCMD_VERSION}/sqlcmd-${GOSQLCMD_VERSION}-linux-amd64.tar.bz2" -o sqlcmd.tar.bz2 && \
+    tar -xjf sqlcmd.tar.bz2 -C /usr/local/bin sqlcmd && \
+    rm sqlcmd.tar.bz2
+
 USER runner
